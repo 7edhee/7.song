@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#11100f" />
+  <title>Mixtape - music, your way</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-mark">M</span><span>mixtape</span></a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#discover"><span class="nav-icon">◈</span>Discover</a>
+        <a class="nav-item" href="#library"><span class="nav-icon">▤</span>Your library</a>
+        <a class="nav-item" href="#liked"><span class="nav-icon">♡</span>Liked songs</a>
+      </nav>
+      <div class="sidebar-heading"><span>Playlists</span><button class="icon-button" id="newPlaylist" title="Create playlist" aria-label="Create playlist">+</button></div>
+      <div class="playlist-list" id="playlistList"><button class="playlist-link">Late night drives</button><button class="playlist-link">Focus / flow</button><button class="playlist-link">Sunday sunlight</button></div>
+      <div class="sidebar-footer"><span class="status-dot"></span><span>Browser player ready</span></div>
+    </aside>
+
+    <main class="main-content" id="discover">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Listen</span><span>/</span><strong>Discover</strong></div>
+        <div class="top-actions"><button class="ghost-button" id="importButton">Import audio</button><button class="ghost-button" id="urlButton">Load URL</button><input id="fileInput" type="file" accept="audio/*" hidden /><button class="avatar" aria-label="Account">JD</button></div>
+      </header>
+
+      <section class="hero-block">
+        <div><p class="eyebrow">Your sound, unfiltered</p><h1>Find the feeling<br /><em>in the noise.</em></h1><p class="hero-copy">Search the songs you love, bring your own files, and let the next track find you.</p></div>
+        <div class="hero-orbit" aria-hidden="true"><div class="orbit-ring"></div><div class="orbit-core">♫</div><span class="orbit-note note-one">♪</span><span class="orbit-note note-two">♩</span></div>
+      </section>
+
+      <section class="search-row"><label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search songs, artists, albums..." autocomplete="off" /><kbd>/</kbd></label><div class="filter-pills"><button class="filter-pill active">All</button><button class="filter-pill">Chill</button><button class="filter-pill">Energy</button><button class="filter-pill">Focus</button></div></section>
+
+      <section class="content-grid">
+        <div class="track-section"><div class="section-heading"><div><p class="eyebrow">Made for you</p><h2>On your wavelength</h2></div><button class="text-button" id="shuffleButton">⤨ Shuffle all</button></div><div id="trackList" class="track-list"></div></div>
+        <aside class="queue-panel"><div class="queue-heading"><div><p class="eyebrow">Up next</p><h2>Queue <span id="queueCount">0</span></h2></div><button class="text-button" id="clearQueue">Clear</button></div><div id="queueList" class="queue-list"><p class="empty-state">Your queue is quiet.<br />Add a song to start listening.</p></div></aside>
+      </section>
+    </main>
+  </div>
+
+  <footer class="player-bar"><div class="now-playing"><div class="mini-art" id="miniArt">✦</div><div class="now-copy"><strong id="nowTitle">Nothing playing</strong><span id="nowArtist">Pick a track to begin</span></div><button class="like-button" id="likeButton" aria-label="Like current song">♡</button></div><div class="player-controls"><div class="control-buttons"><button class="player-button" id="prevButton" aria-label="Previous track">↶</button><button class="play-button" id="playButton" aria-label="Play">▶</button><button class="player-button" id="nextButton" aria-label="Next track">↷</button></div><div class="progress-row"><span id="currentTime">0:00</span><input id="progress" type="range" min="0" max="100" value="0" aria-label="Track progress" /><span id="duration">0:00</span></div></div><div class="player-tools"><button class="player-button" id="volumeButton" aria-label="Toggle mute">◖</button><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume" /><button class="player-button" id="repeatButton" aria-label="Repeat">⟳</button></div></footer>
+  <audio id="audio"></audio>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
