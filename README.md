@@ -1,4 +1,4 @@
-# Mixtape
+# 7e.hz
 
 A dependency-free browser music player. Open `index.html` in a browser to use it.
 
