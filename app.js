@@ -4,20 +4,75 @@ const demoTracks = [
   { id: 3, title: 'Solstice', artist: 'Mira Vale', album: 'Open Air', duration: '3:19', art: 'art-lavender', icon: '☼', mood: 'Energy', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
   { id: 4, title: 'Blue Hour', artist: 'Low Season', album: 'The Long Way Home', duration: '5:01', art: 'art-coral', icon: '✺', mood: 'Chill', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' }
 ];
-const state = { tracks: [...demoTracks], queue: [], current: null, playing: false, repeat: false };
+const state = { tracks: [...demoTracks], queue: [], current: null, playing: false, repeat: false, mode: 'browse' };
 const $ = (id) => document.getElementById(id);
 const audio = $('audio');
+const ITUNES_SEARCH_ENDPOINT = 'https://itunes.apple.com/search';
 const formatTime = (seconds) => Number.isFinite(seconds) ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}` : '0:00';
 function showToast(message) { const toast = $('toast'); toast.textContent = message; toast.classList.add('visible'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('visible'), 2200); }
-function renderTracks(filter = '') { const query = filter.toLowerCase(); const tracks = state.tracks.filter((track) => `${track.title} ${track.artist} ${track.album} ${track.mood}`.toLowerCase().includes(query)); $('trackList').innerHTML = tracks.length ? tracks.map((track) => `<article class="track-row"><div class="track-art ${track.art}">${track.icon}</div><div class="track-meta"><strong>${track.title}</strong><span>${track.artist} · ${track.album}</span></div><span class="track-duration">${track.duration}</span><button class="add-button" data-add="${track.id}" aria-label="Add ${track.title} to queue">+</button></article>`).join('') : '<p class="empty-state">No tracks match that search yet.</p>'; }
+function debounce(fn, delay) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }
+function trackRowHTML(track) {
+  const art = track.artwork
+    ? `<div class="track-art"><img src="${track.artwork}" alt="" loading="lazy" /></div>`
+    : `<div class="track-art ${track.art}">${track.icon}</div>`;
+  return `<article class="track-row">${art}<div class="track-meta"><strong>${track.title}</strong><span>${track.artist} · ${track.album}</span></div><span class="track-duration">${track.duration}</span><button class="add-button" data-add="${track.id}" aria-label="Add ${track.title} to queue">+</button></article>`;
+}
+function renderTrackList(tracks, emptyMessage) { $('trackList').innerHTML = tracks.length ? tracks.map(trackRowHTML).join('') : `<p class="empty-state">${emptyMessage}</p>`; }
+function renderTracks(filter = '') { state.mode = 'browse'; const query = filter.toLowerCase(); const tracks = state.tracks.filter((track) => `${track.title} ${track.artist} ${track.album} ${track.mood}`.toLowerCase().includes(query)); renderTrackList(tracks, 'No tracks match that search yet.'); }
+async function searchOnline(query) {
+  state.mode = 'search';
+  renderTrackList([], 'Searching…');
+  try {
+    const url = `${ITUNES_SEARCH_ENDPOINT}?media=music&entity=song&limit=25&term=${encodeURIComponent(query)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Search request failed');
+    const data = await response.json();
+    const results = (data.results || []).filter((item) => item.previewUrl).map((item) => ({
+      id: item.trackId,
+      title: item.trackName,
+      artist: item.artistName,
+      album: item.collectionName || 'Single',
+      duration: formatTime((item.trackTimeMillis || 0) / 1000),
+      art: 'art-lime',
+      icon: '♫',
+      mood: 'Search',
+      artwork: item.artworkUrl100 ? item.artworkUrl100.replace('100x100', '300x300') : null,
+      src: item.previewUrl
+    }));
+    if (state.searchQuery !== query) return; // a newer search superseded this one
+    results.forEach((track) => { if (!state.tracks.some((existing) => existing.id === track.id)) state.tracks.push(track); });
+    renderTrackList(results, `No results for "${query}". Try a different search.`);
+    if (results.length) showToast(`${results.length} result${results.length === 1 ? '' : 's'} · 30-sec previews`);
+  } catch (error) {
+    if (state.searchQuery !== query) return;
+    renderTrackList([], 'Search failed. Check your connection and try again.');
+    showToast('Could not reach the music search API');
+  }
+}
+const debouncedSearch = debounce((query) => searchOnline(query), 450);
 function renderQueue() { $('queueCount').textContent = state.queue.length; $('queueList').innerHTML = state.queue.length ? state.queue.map((track, index) => `<div class="queue-item"><span class="queue-number">${String(index + 1).padStart(2, '0')}</span><div class="queue-meta"><strong>${track.title}</strong><span>${track.artist}</span></div><button class="remove-button" data-remove="${track.id}" aria-label="Remove ${track.title}">×</button></div>`).join('') : '<p class="empty-state">Your queue is quiet.<br />Add a song to start listening.</p>'; }
-function setCurrent(track, autoplay = false) { state.current = track; audio.src = track.src; $('nowTitle').textContent = track.title; $('nowArtist').textContent = `${track.artist} · ${track.album}`; $('miniArt').textContent = track.icon; $('miniArt').className = `mini-art ${track.art}`; if (autoplay) audio.play().then(() => updatePlayButton()).catch(() => showToast('Press play to start this track')); }
+function setCurrent(track, autoplay = false) {
+  state.current = track;
+  audio.src = track.src;
+  $('nowTitle').textContent = track.title;
+  $('nowArtist').textContent = `${track.artist} · ${track.album}`;
+  const miniArt = $('miniArt');
+  miniArt.className = `mini-art ${track.artwork ? '' : track.art}`;
+  miniArt.innerHTML = track.artwork ? `<img src="${track.artwork}" alt="" />` : track.icon;
+  if (autoplay) audio.play().then(() => updatePlayButton()).catch(() => showToast('Press play to start this track'));
+  if (track.mood === 'Search') showToast('Playing a 30-second preview');
+}
 function playTrack(track) { setCurrent(track, true); if (!state.queue.some((item) => item.id === track.id)) state.queue.push(track); renderQueue(); }
 function updatePlayButton() { state.playing = !audio.paused; $('playButton').textContent = state.playing ? 'Ⅱ' : '▶'; $('playButton').setAttribute('aria-label', state.playing ? 'Pause' : 'Play'); }
 function playNext() { const index = state.current ? state.queue.findIndex((track) => track.id === state.current.id) : -1; const next = state.queue[index + 1] || (state.repeat && state.current) || state.queue[0]; if (next) playTrack(next); }
 $('trackList').addEventListener('click', (event) => { const add = event.target.closest('[data-add]'); if (!add) return; const track = state.tracks.find((item) => item.id === Number(add.dataset.add)); if (track && !state.queue.some((item) => item.id === track.id)) { state.queue.push(track); renderQueue(); showToast(`${track.title} added to queue`); } else showToast('That song is already in your queue'); });
 $('queueList').addEventListener('click', (event) => { const remove = event.target.closest('[data-remove]'); if (!remove) return; state.queue = state.queue.filter((track) => track.id !== Number(remove.dataset.remove)); renderQueue(); });
-$('searchInput').addEventListener('input', (event) => renderTracks(event.target.value));
+$('searchInput').addEventListener('input', (event) => {
+  const value = event.target.value.trim();
+  state.searchQuery = value;
+  if (value.length < 2) { renderTracks(event.target.value); return; }
+  debouncedSearch(value);
+});
 $('playButton').addEventListener('click', () => { if (!state.current) { const track = state.queue[0] || state.tracks[0]; playTrack(track); } else if (audio.paused) audio.play(); else audio.pause(); updatePlayButton(); });
 $('nextButton').addEventListener('click', playNext);
 $('prevButton').addEventListener('click', () => { audio.currentTime = 0; if (state.current) audio.play(); });
